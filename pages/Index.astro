@@ -4,8 +4,10 @@
 import CustomersList from "../islands/CustomersList.tsx";
 ---
 
-<section class="page page--customers">
-  <h1>Kunden</h1>
-  <p class="page__intro">Das zentrale Kundenverzeichnis — Grundlage für Zugänge, Abrechnung und Portal.</p>
+<section class="tds-page">
+  <div class="tds-page__head">
+    <h1 class="tds-page__title">Kunden</h1>
+  </div>
+  <p class="tds-page__lede">Das zentrale Kundenverzeichnis — Grundlage für Zugänge, Abrechnung und Portal.</p>
   <CustomersList client:load />
 </section>

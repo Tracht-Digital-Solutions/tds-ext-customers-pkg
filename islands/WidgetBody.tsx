@@ -12,12 +12,12 @@ export default function WidgetBody() {
       .catch(() => setError(true));
   }, []);
 
-  if (error) return <p className="widget__metric">—</p>;
-  if (count === null) return <p className="widget__metric">…</p>;
+  if (error) return <p className="tds-widget__metric">—</p>;
+  if (count === null) return <p className="tds-widget__metric">…</p>;
 
   return (
     <div className="widget__body">
-      <p className="widget__metric">{count}</p>
+      <p className="tds-widget__metric">{count}</p>
       <p className="widget__label">Kunden im Verzeichnis</p>
     </div>
   );

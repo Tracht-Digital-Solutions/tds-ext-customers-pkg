@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Spinner } from "@tracht-digital-solutions/tds-shared/components";
 
 const api = (path: string, init?: RequestInit) => fetch(path, { credentials: "include", ...init });
 
@@ -71,11 +72,11 @@ export default function CustomersList() {
     else setStatus(`Fehler (HTTP ${res.status}).`);
   };
 
-  if (!loaded) return <p>Wird geladen …</p>;
+  if (!loaded) return <p role="status"><Spinner /></p>;
 
   return (
     <div className="customers">
-      {status ? <p className="status-pill status-pill--info">{status}</p> : null}
+      {status ? <p className="tds-alert" role="status">{status}</p> : null}
 
       {editing !== null ? (
         <div className="lx-form customer-form">
