@@ -1,6 +1,6 @@
 {
   "name": "@tracht-digital-solutions/tds-ext-customers",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Customer/company directory for the TDS panel: the master customer list backing membership editing and the billing/portal extensions. Ships the frontend manifest, PHP Module, and the dual CI/publish pipeline.",
   "license": "UNLICENSED",
   "private": false,

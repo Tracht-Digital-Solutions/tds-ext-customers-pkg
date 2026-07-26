@@ -87,7 +87,7 @@ export default function CustomersList() {
           <textarea placeholder="Notiz (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           <div className="flex gap-2">
             <button type="button" onClick={save}>Speichern</button>
-            <button type="button" className="btn-secondary" onClick={() => setEditing(null)}>Abbrechen</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>Abbrechen</button>
           </div>
         </div>
       ) : (
@@ -110,8 +110,8 @@ export default function CustomersList() {
               <td>{c.email ?? "—"}</td>
               <td>{c.phone ?? "—"}</td>
               <td className="flex gap-2">
-                <button type="button" className="btn-secondary" onClick={() => startEdit(c)}>Bearbeiten</button>
-                <button type="button" className="btn-secondary" onClick={() => void remove(c.id)}>Löschen</button>
+                <button type="button" className="btn btn-ghost" onClick={() => startEdit(c)}>Bearbeiten</button>
+                <button type="button" className="btn btn-ghost" onClick={() => void remove(c.id)}>Löschen</button>
               </td>
             </tr>
           ))}

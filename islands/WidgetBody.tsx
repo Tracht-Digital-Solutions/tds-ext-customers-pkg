@@ -16,9 +16,9 @@ export default function WidgetBody() {
   if (count === null) return <p className="tds-widget__metric">…</p>;
 
   return (
-    <div className="widget__body">
+    <div className="tds-stack">
       <p className="tds-widget__metric">{count}</p>
-      <p className="widget__label">Kunden im Verzeichnis</p>
+      <p className="marginalia">Kunden im Verzeichnis</p>
     </div>
   );
 }
