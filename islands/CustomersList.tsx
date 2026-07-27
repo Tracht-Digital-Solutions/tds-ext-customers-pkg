@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Spinner } from "@tracht-digital-solutions/tds-shared/components";
+import { ConfirmDialog, Spinner } from "@tracht-digital-solutions/tds-shared/components";
 
 const api = (path: string, init?: RequestInit) => fetch(path, { credentials: "include", ...init });
 
@@ -20,6 +20,8 @@ export default function CustomersList() {
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const [form, setForm] = useState(empty);
   const [status, setStatus] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     const res = await api("/customers");
@@ -66,10 +68,21 @@ export default function CustomersList() {
     }
   };
 
-  const remove = async (id: number) => {
-    const res = await api(`/customers/${id}`, { method: "DELETE" });
-    if (res.ok) void load();
-    else setStatus(`Fehler (HTTP ${res.status}).`);
+  // The customer directory backs memberships, billing and the portal, so this
+  // delete cascades further than any other in the platform — it was a single
+  // unguarded click.
+  const confirmRemove = async () => {
+    const c = pendingDelete;
+    if (!c) return;
+    setDeleting(true);
+    try {
+      const res = await api(`/customers/${c.id}`, { method: "DELETE" });
+      setPendingDelete(null);
+      if (res.ok) void load();
+      else setStatus(`Fehler (HTTP ${res.status}).`);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!loaded) return <p role="status"><Spinner /></p>;
@@ -111,7 +124,7 @@ export default function CustomersList() {
               <td>{c.phone ?? "—"}</td>
               <td className="flex gap-2">
                 <button type="button" className="btn btn-ghost" onClick={() => startEdit(c)}>Bearbeiten</button>
-                <button type="button" className="btn btn-ghost" onClick={() => void remove(c.id)}>Löschen</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setPendingDelete(c)}>Löschen</button>
               </td>
             </tr>
           ))}
@@ -122,6 +135,15 @@ export default function CustomersList() {
           ) : null}
         </tbody>
       </table>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Kunde „${pendingDelete?.name ?? ""}“ löschen?`}
+        message="Mitgliedschaften, Projekte und Rechnungen dieses Kunden verlieren ihre Zuordnung."
+        busy={deleting}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
