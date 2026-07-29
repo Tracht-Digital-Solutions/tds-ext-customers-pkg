@@ -50,11 +50,44 @@ migration epic.
 - Migration class prefix `Customers*` (globally unique — shared in-process migrator);
   migration **versions** must also be unique across extensions (shared `phinxlog`).
 
+## Tests (frontend)
+
+```bash
+npm run test:run    # vitest, 76 tests (jsdom per-file via a @vitest-environment docblock)
+```
+
+This directory is the ROOT of the customer graph — membership editing, billing
+and the portal all key off these ids — so the assertions concentrate on:
+
+- **an edit PATCHes the row it opened**, never POSTing a second copy. A
+  duplicate company here silently splits one customer's invoices, portal access
+  and tickets across two ids.
+- **a 409 says "E-Mail bereits vergeben"**, not a generic error. That is the one
+  failure an admin can act on: the customer already exists under another row.
+- **delete hits the id it was asked for**, and does *not* refresh the list when
+  the backend refuses (a reload would look like the row simply vanished — the
+  backend refuses when memberships or invoices still reference it).
+- **a non-OK list response never puts the directory on screen.**
+
+Error-path tests deliberately answer with a POPULATED body and a non-OK status.
+Against an EMPTY error body the `res.ok` check is unobservable.
+
+Two tests exist only because the mutation pass proved the obvious versions
+blind, and both are worth remembering as a pattern:
+
+- asserting a row *contains* both the email and the phone passes when the two
+  COLUMNS are swapped — the assertion is per-cell now;
+- `value={null}` on a controlled input still reads back as `""`, so the `?? ""`
+  coercion is invisible in the DOM. It only shows in the PATCH body, which is
+  where it is asserted (the create path sends `""`, so an edit must match).
+
+Verified by mutation: 35 deliberate breakages introduced, 35 caught.
+
 ## Commands
 
 ```bash
 composer install && composer test    # phpunit: Module RBAC + validation (DB-free)
-npm install --no-package-lock && npm run type-check && npm run build
+npm install --no-package-lock && npm run type-check && npm run test:run && npm run build
 ```
 
 Register `new CustomersModule()` in `tds-core-frontend-api`'s `Modules::enabled()` and
