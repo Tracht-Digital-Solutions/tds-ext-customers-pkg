@@ -88,26 +88,26 @@ export default function CustomersList() {
   if (!loaded) return <p><Spinner /></p>;
 
   return (
-    <div className="customers">
+    <div className="tds-stack">
       {status ? <p className="tds-alert" role="status">{status}</p> : null}
 
       {editing !== null ? (
-        <div className="lx-form customer-form">
+        <div className="tds-card tds-stack">
           <h4>{editing === "new" ? "Neuer Kunde" : "Kunde bearbeiten"}</h4>
-          <input type="text" placeholder="Name / Firma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input type="email" placeholder="E-Mail (optional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input type="text" placeholder="Telefon (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <textarea placeholder="Notiz (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-          <div className="flex gap-2">
-            <button type="button" onClick={save}>Speichern</button>
+          <input className="field-boxed" type="text" placeholder="Name / Firma" aria-label="Name / Firma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input className="field-boxed" type="email" placeholder="E-Mail (optional)" aria-label="E-Mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input className="field-boxed" type="text" placeholder="Telefon (optional)" aria-label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <textarea className="field-boxed" placeholder="Notiz (optional)" aria-label="Notiz" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          <div className="tds-toolbar">
+            <button type="button" className="btn btn-primary" onClick={save}>Speichern</button>
             <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>Abbrechen</button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={startNew}>Neuer Kunde</button>
+        <button type="button" className="btn btn-primary" onClick={startNew}>Neuer Kunde</button>
       )}
 
-      <table className="lx-table">
+      <table className="tds-table">
         <thead>
           <tr>
             <th>Name</th>
