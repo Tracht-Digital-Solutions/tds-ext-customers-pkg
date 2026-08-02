@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Skeleton } from "@tracht-digital-solutions/tds-shared/components";
 
 /** Customers widget body — the directory count. Same-origin fetch with credentials. */
 export default function WidgetBody() {
@@ -13,7 +14,7 @@ export default function WidgetBody() {
   }, []);
 
   if (error) return <p className="tds-widget__metric">—</p>;
-  if (count === null) return <p className="tds-widget__metric">…</p>;
+  if (count === null) return <p className="tds-widget__metric" aria-busy="true"><Skeleton width="3ch" height="1.75rem" /></p>;
 
   return (
     <div className="tds-stack">

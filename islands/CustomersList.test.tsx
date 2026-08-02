@@ -87,7 +87,7 @@ describe("loading", () => {
 
   it("shows a loading line until the directory arrives", () => {
     render(<CustomersList />);
-    expect(screen.getByText("Wird geladen …")).toBeTruthy();
+    expect(screen.getByLabelText("Wird geladen")).toBeTruthy();
   });
 
   it("says so when the directory is empty", async () => {
@@ -140,7 +140,7 @@ describe("loading", () => {
     respond(/^\/customers$/, {}, 500, "GET");
     render(<CustomersList />);
     await screen.findByText("Fehler (HTTP 500).");
-    expect(screen.queryByText("Wird geladen …")).toBeNull();
+    expect(screen.queryByLabelText("Wird geladen")).toBeNull();
   });
 
   it("tolerates a response with no customers field", async () => {
