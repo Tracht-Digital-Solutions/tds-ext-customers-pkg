@@ -41,6 +41,12 @@ migration epic.
 
 ## Conventions (from the template — don't regress)
 
+- **Outcomes are toasts (tds-shared `>=0.16.0`); a 409 is not.** Saving and
+  deleting report through `toast`, and the confirmation names what actually
+  happened (create vs edit). The duplicate-email 409 stays in the in-flow
+  banner, because it points at a field to fix in the form that is still open.
+  Never mount a `ToastHost` here — the frontend host owns the only one.
+
 - Contract dep is the **published** `^1.0.0` via the public **VCS** repo (no path
   repo — CI fatals on a missing one); npm from GitHub Packages (`.npmrc` +
   `NPM_TOKEN` from `PACKAGE_TOKEN`).
