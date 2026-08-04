@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ConfirmDialog, Spinner } from "@tracht-digital-solutions/tds-shared/components";
+import { ConfirmDialog, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
 
 const api = (path: string, init?: RequestInit) => fetch(path, { credentials: "include", ...init });
 
@@ -60,11 +60,15 @@ export default function CustomersList() {
     });
     if (res.ok) {
       setEditing(null);
-      setStatus("Gespeichert.");
+      toast.success(isNew ? "Kunde angelegt." : "Kunde gespeichert.");
       void load();
+    } else if (res.status === 409) {
+      // A duplicate email is something to FIX in the form that is still open,
+      // so it stays in-flow next to the field it is about.
+      setStatus("E-Mail bereits vergeben.");
     } else {
       const d = await res.json().catch(() => ({}));
-      setStatus(res.status === 409 ? "E-Mail bereits vergeben." : `Fehler: ${d.error ?? res.status}`);
+      toast.danger(`Speichern fehlgeschlagen: ${d.error ?? `HTTP ${res.status}`}`);
     }
   };
 
@@ -78,8 +82,12 @@ export default function CustomersList() {
     try {
       const res = await api(`/customers/${c.id}`, { method: "DELETE" });
       setPendingDelete(null);
-      if (res.ok) void load();
-      else setStatus(`Fehler (HTTP ${res.status}).`);
+      if (res.ok) {
+        toast.success(`„${c.name}" gelöscht.`);
+        void load();
+      } else {
+        toast.danger(`Löschen fehlgeschlagen (HTTP ${res.status}).`);
+      }
     } finally {
       setDeleting(false);
     }
@@ -89,7 +97,8 @@ export default function CustomersList() {
 
   return (
     <div className="tds-stack">
-      {status ? <p className="tds-alert" role="status">{status}</p> : null}
+      {/* Validation + the load failure only — outcomes are toasts. */}
+      {status ? <p className="tds-alert tds-alert--danger" role="alert">{status}</p> : null}
 
       {editing !== null ? (
         <div className="tds-card tds-stack">
