@@ -131,9 +131,15 @@ export default function CustomersList() {
               <td>{c.name}</td>
               <td>{c.email ?? "—"}</td>
               <td>{c.phone ?? "—"}</td>
-              <td className="flex gap-2">
-                <button type="button" className="btn btn-ghost" onClick={() => startEdit(c)}>Bearbeiten</button>
-                <button type="button" className="btn btn-ghost" onClick={() => setPendingDelete(c)}>Löschen</button>
+              {/* The flex belongs on a wrapper, never on the cell: `display:
+                  flex` takes a cell out of the table's column algorithm, so
+                  this column drifted away from its own header. `.tds-toolbar`
+                  also wraps, which the bare `flex` did not. */}
+              <td>
+                <span className="tds-toolbar">
+                  <button type="button" className="btn btn-ghost" onClick={() => startEdit(c)}>Bearbeiten</button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setPendingDelete(c)}>Löschen</button>
+                </span>
               </td>
             </tr>
           ))}
