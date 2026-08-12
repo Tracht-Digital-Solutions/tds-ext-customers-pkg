@@ -32,9 +32,18 @@ type Handler = (url: string, init?: RequestInit) => Reply | undefined;
 let calls: Array<{ url: string; method: string; body: unknown }> = [];
 let handlers: Handler[] = [];
 
+
+/**
+ * Path + query of a request. The island calls an ABSOLUTE URL now (via
+ * `apiFetch`); a relative one would hit the product's own static host and come
+ * back as SPA-fallback HTML with a 200. Matching on the path keeps the route
+ * matchers below anchored.
+ */
+const pathOf = (url: string) => String(url).replace(/^https?:\/\/[^/]+/i, "");
+
 function respond(match: RegExp, body: unknown, status = 200, method?: string) {
   handlers.unshift((url, init) => {
-    if (!match.test(url)) return undefined;
+    if (!match.test(pathOf(url))) return undefined;
     if (method && (init?.method ?? "GET") !== method) return undefined;
     return { status, body };
   });
@@ -72,7 +81,7 @@ afterEach(() => {
 });
 
 const user = () => userEvent.setup({ delay: null });
-const sent = (method: string, match: RegExp) => calls.filter((c) => c.method === method && match.test(c.url));
+const sent = (method: string, match: RegExp) => calls.filter((c) => c.method === method && match.test(pathOf(c.url)));
 
 async function open(customers: unknown[] = []) {
   respond(/^\/customers$/, { customers }, 200, "GET");
@@ -93,7 +102,12 @@ describe("loading", () => {
   it("reads the directory with credentials", async () => {
     await open();
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
-    expect(fetchMock.mock.calls[0]![0]).toBe("/customers");
+    expect(pathOf(fetchMock.mock.calls[0]![0] as string)).toBe("/customers");
+    // Absolute, on the API host. Every other assertion here matches the PATH,
+    // which a relative fetch satisfies too — so this is the one that fails if
+    // the call ever goes back to the product's own origin (whose SPA fallback
+    // answers 200 + HTML and turns into a silent empty state).
+    expect(String(fetchMock.mock.calls[0]![0]).startsWith("https://api.tracht-digital.de/")).toBe(true);
     expect(fetchMock.mock.calls[0]![1]).toMatchObject({ credentials: "include" });
   });
 

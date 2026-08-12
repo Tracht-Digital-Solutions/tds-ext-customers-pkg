@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Skeleton } from "@tracht-digital-solutions/tds-shared/components";
+import { apiFetch } from "@tracht-digital-solutions/tds-shared/api";
 
 /** Customers widget body — the directory count. Same-origin fetch with credentials. */
 export default function WidgetBody() {
@@ -7,7 +8,7 @@ export default function WidgetBody() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch("/customers/summary", { credentials: "include" })
+    apiFetch("/customers/summary")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: { count: number }) => setCount(d.count))
       .catch(() => setError(true));
