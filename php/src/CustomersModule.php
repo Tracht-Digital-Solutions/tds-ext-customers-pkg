@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
 use Tds\Ext\Customers\Domain\CustomerRepository;
 use Tds\Frontend\Contract\AbstractModule;
+use Tds\Frontend\Contract\ApiDocSource;
 use Tds\Frontend\Contract\PermissionDef;
 use Tds\Frontend\Contract\UserContext;
 
@@ -22,7 +23,7 @@ use Tds\Frontend\Contract\UserContext;
  * `{customers:[{id,name}]}` list the base user-editor consumes. Data via the core
  * shared PDO.
  */
-final class CustomersModule extends AbstractModule
+final class CustomersModule extends AbstractModule implements ApiDocSource
 {
     public function id(): string
     {
@@ -185,5 +186,16 @@ final class CustomersModule extends AbstractModule
     {
         $res->getBody()->write(json_encode($data, JSON_THROW_ON_ERROR));
         return $res->withStatus($status)->withHeader('Content-Type', 'application/json');
+    }
+
+    /**
+     * Route documentation for the admin frontend's API reference. Kept in its
+     * own file so the prose does not sit in the middle of the wiring.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function apiDocs(): array
+    {
+        return require __DIR__ . '/../docs/api.php';
     }
 }
