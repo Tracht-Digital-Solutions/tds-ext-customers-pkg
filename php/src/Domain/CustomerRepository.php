@@ -36,6 +36,35 @@ final class CustomerRepository
         ], $rows);
     }
 
+    /**
+     * `{id,name}` for a specific set of ids — the caller's OWN memberships.
+     *
+     * Deliberately not `adminList()` filtered in PHP: that would read the whole
+     * directory to hand back two rows, and this route is reachable by every
+     * portal user. Ids are bound as integers, never interpolated.
+     *
+     * @param list<int> $ids
+     * @return list<array{id:int,name:string}>
+     */
+    public function byIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $i): bool => $i > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT id, name FROM customer WHERE id IN ({$placeholders}) ORDER BY name ASC"
+        );
+        $stmt->execute($ids);
+
+        return array_map(static fn (array $r): array => [
+            'id' => (int) $r['id'],
+            'name' => (string) $r['name'],
+        ], $stmt->fetchAll());
+    }
+
     /** @return array<string,mixed>|null */
     public function find(int $id): ?array
     {

@@ -33,6 +33,24 @@ return [
     ],
     [
         'method' => 'GET',
+        'pattern' => '/me/companies',
+        'summary' => 'Die eigenen Firmen des angemeldeten Benutzers',
+        'description' => 'Liefert `{id, name, active}` für **genau die** Firmen, deren '
+            . 'Mitgliedschaft im verifizierten Token steht — die Quelle für den Firmennamen '
+            . 'im Profilmenü der Shell. Nötig, weil `GET /admin/customers` bewusst admin-only '
+            . 'ist: ein Portalnutzer könnte sonst nicht einmal den Namen seiner eigenen Firma '
+            . 'auflösen und das Menü müsste „Firma #7" anzeigen. Kein Rechte-Gate über die '
+            . 'Anmeldung hinaus — der Name der eigenen Firma ist kein `customers:read`-Stoff, '
+            . 'und ein solches Gate hieße, dass jeder Portalnutzer das Verzeichnis-Leserecht '
+            . 'braucht, nur um eine Kopfzeile zu sehen. **Ein Admin bekommt eine leere Liste**: '
+            . 'seine Reichweite ist „jede Firma", was nicht dasselbe ist wie einer anzugehören.',
+        'responses' => [
+            ['status' => 200, 'description' => '`{companies: [{id, name, active}]}`; leer für Admins.'],
+            ['status' => 401, 'description' => 'Keine Sitzung.'],
+        ],
+    ],
+    [
+        'method' => 'GET',
         'pattern' => '/admin/customers',
         'summary' => 'Schlanke `{id, name}`-Liste für Mitgliedschafts-Auswahlen',
         'description' => 'Die Firmenliste, die der Nutzer-Editor der Basis beim Bearbeiten '

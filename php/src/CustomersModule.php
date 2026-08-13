@@ -10,6 +10,7 @@ use Slim\App;
 use Tds\Ext\Customers\Domain\CustomerRepository;
 use Tds\Frontend\Contract\AbstractModule;
 use Tds\Frontend\Contract\ApiDocSource;
+use Tds\Frontend\Contract\MultiCompanyContext;
 use Tds\Frontend\Contract\PermissionDef;
 use Tds\Frontend\Contract\UserContext;
 
@@ -66,6 +67,46 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
                 return $deny;
             }
             return self::json($res, ['customers' => $c->get(CustomerRepository::class)->adminList()]);
+        });
+
+        // The caller's OWN companies, for the shell's profile menu.
+        //
+        // Needed because `/admin/customers` above is admin-only by design, so a
+        // portal user cannot resolve even their own company's name — and the
+        // menu would have to print "Firma #7". Scoped to the ids in the
+        // verified token, so this reads no more than the principal already
+        // proves membership of.
+        //
+        // No permission gate beyond being signed in: your own company's NAME is
+        // not `customers:read` material, and requiring that permission would
+        // mean every portal user needs the directory read right just to see a
+        // header.
+        $app->get('/me/companies', function (Request $req, Response $res) use ($c): Response {
+            $user = $c->get(UserContext::class);
+            if (!$user->isAuthenticated()) {
+                return self::json($res, ['error' => 'Unauthorized'], 401);
+            }
+
+            // Optional capability (contract 1.8.0) — probe, never assume.
+            $ids = $user instanceof MultiCompanyContext ? $user->companyIds() : [];
+
+            // Short-circuit BEFORE resolving the repository. An admin
+            // legitimately has no memberships (their reach is "any company",
+            // which is not belonging to one), and the shell calls this on
+            // every page — so the common admin case must not construct a
+            // DB-backed repository to run no query. It also means the profile
+            // menu still renders for an admin while the database is down.
+            if ($ids === []) {
+                return self::json($res, ['companies' => []]);
+            }
+
+            $active = $user->activeCompanyId();
+            $companies = array_map(
+                static fn (array $row): array => $row + ['active' => $row['id'] === $active],
+                $c->get(CustomerRepository::class)->byIds($ids),
+            );
+
+            return self::json($res, ['companies' => $companies]);
         });
 
         // Directory CRUD.

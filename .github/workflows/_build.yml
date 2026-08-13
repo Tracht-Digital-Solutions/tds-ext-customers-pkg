@@ -93,15 +93,23 @@ jobs:
           npm publish --tag dev
 
       - name: Release (@latest) + push tag
-        # Bumps package.json AND composer.json in lockstep (one release),
-        # commits, tags, publishes npm, pushes the tag (= the Composer release ref).
+        # Bumps package.json, composer.json AND the manifest's `version` in
+        # lockstep (one release), commits, tags, publishes npm, pushes the tag
+        # (= the Composer release ref).
         if: ${{ inputs.publish_tag == 'latest' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           new=$(npm version ${{ inputs.bump }} --no-git-tag-version)
           node -e "const f='composer.json',j=require('./'+f);j.version='${new}'.replace(/^v/,'');require('fs').writeFileSync(f, JSON.stringify(j,null,2)+'\n')"
-          git add package.json composer.json
+          # The manifest carries its own `version` (the contract requires a
+          # non-empty one). It was hand-maintained and had drifted to 0.1.0
+          # while the package was at 0.1.11 — inevitable, because only this
+          # step knows the new number. A test asserting the two match would go
+          # red after every release instead; syncing it here is what actually
+          # keeps it true.
+          node -e "const f='src/index.ts',fs=require('fs');const v='${new}'.replace(/^v/,'');const s=fs.readFileSync(f,'utf8').replace(/(\n\s*version:\s*)\"[^\"]*\"/, '\$1\"'+v+'\"');fs.writeFileSync(f,s)"
+          git add package.json composer.json src/index.ts
           git commit -m "release: ${new}"
           # Annotated tag (-a): `git push --follow-tags` pushes ONLY annotated
           # tags — a lightweight tag never reaches the remote, so Composer (which

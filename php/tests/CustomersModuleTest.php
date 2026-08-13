@@ -9,10 +9,11 @@ use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Tds\Ext\Customers\CustomersModule;
+use Tds\Frontend\Contract\MultiCompanyContext;
 use Tds\Frontend\Contract\UserContext;
 
 /** A configurable UserContext double (no live JWT needed). */
-final class FakeUser implements UserContext
+class FakeUser implements UserContext
 {
     /** @param string[] $perms */
     public function __construct(
@@ -55,7 +56,33 @@ final class FakeUser implements UserContext
 
     public function activeCompanyId(): ?int
     {
-        return null;
+        return $this->activeCompany;
+    }
+
+    public ?int $activeCompany = null;
+}
+
+/**
+ * A principal that DOES carry the optional capability. Kept separate from
+ * {@see FakeUser} on purpose: the whole point of `MultiCompanyContext` being a
+ * companion interface is that a plain `UserContext` still works, so both
+ * shapes have to exist in the suite.
+ */
+final class FakeMultiCompanyUser extends FakeUser implements MultiCompanyContext
+{
+    /** @param list<int> $ids */
+    public function __construct(
+        private array $ids = [],
+        bool $auth = true,
+        bool $admin = false,
+        array $perms = [],
+    ) {
+        parent::__construct($auth, $admin, $perms);
+    }
+
+    public function companyIds(): array
+    {
+        return $this->ids;
     }
 }
 
@@ -136,5 +163,65 @@ final class CustomersModuleTest extends TestCase
             ['name' => 'ACME', 'email' => 'not-an-email'],
         );
         self::assertSame(422, $res->getStatusCode());
+    }
+
+    public function testMyCompaniesRequiresOnlyASession(): void
+    {
+        // Deliberately NOT gated on customers:read — your own company's name
+        // is not directory-read material, and requiring that permission would
+        // mean every portal user needs it just to render a header.
+        self::assertSame(
+            401,
+            $this->get($this->appWith(new FakeUser(auth: false)), '/me/companies')->getStatusCode(),
+        );
+        self::assertSame(
+            200,
+            $this->get($this->appWith(new FakeMultiCompanyUser(perms: [])), '/me/companies')->getStatusCode(),
+        );
+    }
+
+    public function testMyCompaniesIsEmptyForAPrincipalWithoutTheCapability(): void
+    {
+        // The contract's optional-capability pattern: a plain UserContext must
+        // still work. `instanceof` on a class that is not implemented is
+        // silently false, so this asserts the DEGRADED path is reached rather
+        // than erroring — the failure mode it guards is a green suite that
+        // proves nothing because the interface was never resolvable.
+        $res = $this->get($this->appWith(new FakeUser(perms: ['customers:read'])), '/me/companies');
+
+        self::assertSame(200, $res->getStatusCode());
+        self::assertSame(['companies' => []], $this->body($res));
+    }
+
+    public function testMyCompaniesIsEmptyForAnAdminAndTouchesNoDatabase(): void
+    {
+        // An admin's reach is "any company", which is not belonging to one.
+        // The container here has NO PDO binding at all, so if the route ever
+        // stopped short-circuiting and resolved the repository, this would
+        // blow up rather than quietly pass — which is the point: the shell
+        // calls this on every page load.
+        $res = $this->get($this->appWith(new FakeMultiCompanyUser(admin: true)), '/me/companies');
+
+        self::assertSame(200, $res->getStatusCode());
+        self::assertSame(['companies' => []], $this->body($res));
+    }
+
+    public function testTheCapabilityInterfaceIsActuallyResolvable(): void
+    {
+        // Guards the trap this feature was written into: the vendored contract
+        // can lag behind, `instanceof` fails silently, and every test above
+        // still passes while the route returns [] forever in production.
+        self::assertTrue(
+            interface_exists(MultiCompanyContext::class),
+            'MultiCompanyContext missing — the vendored contract is stale, so /me/companies '
+            . 'would silently return [] for everyone. Run composer update for the contract.',
+        );
+    }
+
+    /** @return array<string,mixed> */
+    private function body(\Psr\Http\Message\ResponseInterface $res): array
+    {
+        $res->getBody()->rewind();
+        return json_decode($res->getBody()->getContents(), true);
     }
 }

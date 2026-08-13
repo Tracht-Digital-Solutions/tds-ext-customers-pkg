@@ -23,6 +23,36 @@ and exposes:
 - **`GET /admin/customers`** — the admin-only `{customers:[{id,name}]}` list the
   **base user-management** consumes for company-membership editing (replacing the
   legacy `tds-customer-api` endpoint the new frontend still calls today).
+- **`GET /me/companies`** — `{companies:[{id,name,active}]}` for the caller's OWN
+  memberships, which is what puts a company NAME in the shell's profile menu.
+
+### Why `/me/companies` exists next to `/admin/customers`
+
+`/admin/customers` is admin-only **by design** ("wer Mitgliedschaften vergibt, ist
+ohnehin Admin"), so a portal user cannot resolve even their own company's name and
+the menu would have to print `Firma #7`. Four things about it are deliberate:
+
+- **No permission gate beyond being signed in.** Your own company's name is not
+  `customers:read` material; requiring it would mean every portal user needs the
+  directory read right just to render a header.
+- **Scoped to the ids in the verified token**, via the contract's optional
+  `MultiCompanyContext` (1.8.0) — `instanceof`, never assumed. A principal whose
+  context predates the capability degrades to an empty list rather than erroring.
+- **An admin gets `[]`.** Their reach is "any company", which is not belonging to
+  one; returning the directory here would turn a convenience accessor into an
+  unbounded read.
+- **It short-circuits before resolving the repository** when there are no ids. The
+  shell calls this on every page load, so the common admin case must not build a
+  DB-backed repository to run no query — and the profile menu keeps rendering for
+  an admin while the database is down. `CustomersModuleTest` binds no PDO at all,
+  so a regression here fails loudly instead of passing quietly.
+
+> **The trap this feature was written into:** `instanceof` on a class that does not
+> exist is silently `false`. The vendored contract in this repo lagged behind, so
+> the route returned `[]` for everyone while the whole suite stayed green.
+> `testTheCapabilityInterfaceIsActuallyResolvable` is the guard; if it fails, run
+> `composer update tracht-digital-solutions/tds-frontend-contract`. CI is
+> unaffected — the gateway's `_assemble.yml` checks the contract out from `main`.
 
 ## Why it exists / migration role
 
