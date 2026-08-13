@@ -25,9 +25,11 @@ export default function CustomersList() {
   const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
-    const res = await api("/customers");
+    const res = await api("/companies");
     if (res.ok) {
-      setCustomers((await res.json()).customers ?? []);
+      const body = await res.json();
+      // Both keys during the rename window; the new one wins.
+      setCustomers(body.companies ?? body.customers ?? []);
     } else {
       setStatus(res.status === 401 || res.status === 403 ? "Keine Berechtigung." : `Fehler (HTTP ${res.status}).`);
     }
@@ -54,14 +56,14 @@ export default function CustomersList() {
       return;
     }
     const isNew = editing === "new";
-    const res = await api(isNew ? "/customers" : `/customers/${editing}`, {
+    const res = await api(isNew ? "/companies" : `/companies/${editing}`, {
       method: isNew ? "POST" : "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     if (res.ok) {
       setEditing(null);
-      toast.success(isNew ? "Kunde angelegt." : "Kunde gespeichert.");
+      toast.success(isNew ? "Firma angelegt." : "Firma gespeichert.");
       void load();
     } else if (res.status === 409) {
       // A duplicate email is something to FIX in the form that is still open,
@@ -81,7 +83,7 @@ export default function CustomersList() {
     if (!c) return;
     setDeleting(true);
     try {
-      const res = await api(`/customers/${c.id}`, { method: "DELETE" });
+      const res = await api(`/companies/${c.id}`, { method: "DELETE" });
       setPendingDelete(null);
       if (res.ok) {
         toast.success(`„${c.name}" gelöscht.`);
@@ -103,7 +105,7 @@ export default function CustomersList() {
 
       {editing !== null ? (
         <div className="tds-card tds-stack">
-          <h4>{editing === "new" ? "Neuer Kunde" : "Kunde bearbeiten"}</h4>
+          <h4>{editing === "new" ? "Neue Firma" : "Firma bearbeiten"}</h4>
           <input className="field-boxed" type="text" placeholder="Name / Firma" aria-label="Name / Firma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input className="field-boxed" type="email" placeholder="E-Mail (optional)" aria-label="E-Mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input className="field-boxed" type="text" placeholder="Telefon (optional)" aria-label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -114,7 +116,7 @@ export default function CustomersList() {
           </div>
         </div>
       ) : (
-        <button type="button" className="btn btn-primary" onClick={startNew}>Neuer Kunde</button>
+        <button type="button" className="btn btn-primary" onClick={startNew}>Neue Firma</button>
       )}
 
       <table className="tds-table">
@@ -146,7 +148,7 @@ export default function CustomersList() {
           ))}
           {customers.length === 0 ? (
             <tr>
-              <td colSpan={4} className="opacity-70">Noch keine Kunden.</td>
+              <td colSpan={4} className="opacity-70">Noch keine Firmen.</td>
             </tr>
           ) : null}
         </tbody>
@@ -154,8 +156,8 @@ export default function CustomersList() {
 
       <ConfirmDialog
         open={pendingDelete !== null}
-        title={`Kunde „${pendingDelete?.name ?? ""}“ löschen?`}
-        message="Mitgliedschaften, Projekte und Rechnungen dieses Kunden verlieren ihre Zuordnung."
+        title={`Firma „${pendingDelete?.name ?? ""}“ löschen?`}
+        message="Mitgliedschaften, Projekte und Rechnungen dieser Firma verlieren ihre Zuordnung."
         busy={deleting}
         onConfirm={() => void confirmRemove()}
         onCancel={() => setPendingDelete(null)}

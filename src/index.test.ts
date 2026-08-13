@@ -33,8 +33,8 @@ describe("identity", () => {
 describe("permissions", () => {
   it("declares the read/write pair the backend gates on", () => {
     const ids = manifest.permissions?.map((p) => p.id) ?? [];
-    expect(ids).toContain("customers:read");
-    expect(ids).toContain("customers:write");
+    expect(ids).toContain("companies:read");
+    expect(ids).toContain("companies:write");
   });
 
   it("namespaces every permission id", () => {
@@ -64,10 +64,10 @@ describe("permissions", () => {
     // This hub exposes customer names, rates and invoices; an ungated route
     // would show them to every logged-in user of the product.
     for (const route of manifest.routes ?? []) {
-      expect(route.permission, `route ${route.pattern} is ungated`).toBe("customers:read");
+      expect(route.permission, `route ${route.pattern} is ungated`).toBe("companies:read");
     }
     for (const widget of manifest.widgets ?? []) {
-      expect(widget.permission, `widget ${widget.id} is ungated`).toBe("customers:read");
+      expect(widget.permission, `widget ${widget.id} is ungated`).toBe("companies:read");
     }
   });
 
@@ -125,7 +125,7 @@ describe("nav, routes and widgets", () => {
   });
 
   it("points the widget at the endpoint its island actually reads", () => {
-    expect(manifest.widgets?.[0]?.dataEndpoint).toBe("/customers/summary");
+    expect(manifest.widgets?.[0]?.dataEndpoint).toBe("/companies/summary");
   });
 
   it("namespaces its nav, widget and settings ids under the module", () => {
@@ -163,7 +163,7 @@ describe("i18n", () => {
 
   it("namespaces its i18n keys so they cannot collide with another extension", () => {
     for (const key of Object.keys(manifest.i18n?.de ?? {})) {
-      expect(key, `${key} is not namespaced`).toMatch(/^customers\./);
+      expect(key, `${key} is not namespaced`).toMatch(/^companies./);
     }
   });
 });
@@ -192,7 +192,7 @@ describe("composition", () => {
 
   it("surfaces its route and nav entry through the composition", () => {
     const composed = composeExtensions([manifest]);
-    expect(composed.routes.map((r) => r.pattern)).toContain("/customers");
+    expect(composed.routes.map((r) => r.pattern)).toContain("/firmen");
     expect(composed.nav.map((n) => n.id)).toContain("customers");
   });
 });

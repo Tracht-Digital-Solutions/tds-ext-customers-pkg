@@ -31,12 +31,20 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
         return 'customers';
     }
 
-    /** @return PermissionDef[] */
+    /**
+     * @return PermissionDef[]
+     *
+     * The ids are `companies:*` now. tds-auth-api rewrote the stored strings
+     * (migration 20260814000007) and normalises the old spelling on read, so
+     * the catalog only ever needs to publish the current one — but a TOKEN
+     * minted before the rename still carries `customers:*` for up to an hour,
+     * which is what {@see self::require()} handles.
+     */
     public function permissions(): array
     {
         return [
-            new PermissionDef('customers:read', 'Kunden ansehen', 'customers'),
-            new PermissionDef('customers:write', 'Kunden verwalten', 'customers'),
+            new PermissionDef('companies:read', 'Firmen ansehen', 'companies'),
+            new PermissionDef('companies:write', 'Firmen verwalten', 'companies'),
         ];
     }
 
@@ -53,21 +61,40 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
             $c->set(CustomerRepository::class, static fn ($c) => new CustomerRepository($c->get(PDO::class)));
         }
 
+        // --- the customer → company rename -------------------------------
+        //
+        // Every route below is mounted at BOTH `/companies…` (current) and
+        // `/customers…` (deprecated). The panel, the thirteen extensions and
+        // this backend ship independently, so a build that still calls the old
+        // path has to keep working for one release — and unlike a missing
+        // permission, a missing ROUTE is a 404 the caller cannot recover from.
+        //
+        // The handlers are defined once and mapped twice: two copies of a
+        // permission check is how one of them ends up wrong.
+        //
+        // Responses carry BOTH keys (`companies` and `customers`) for the same
+        // reason. Drop the aliases — paths and keys — in the follow-up release.
+
         // Widget summary.
-        $app->get('/customers/summary', function (Request $req, Response $res) use ($c): Response {
-            if (($deny = self::require($c->get(UserContext::class), 'customers:read', $res)) !== null) {
+        $summary = function (Request $req, Response $res) use ($c): Response {
+            if (($deny = self::require($c->get(UserContext::class), 'companies:read', $res)) !== null) {
                 return $deny;
             }
             return self::json($res, ['count' => $c->get(CustomerRepository::class)->count()]);
-        });
+        };
+        $app->get('/companies/summary', $summary);
+        $app->get('/customers/summary', $summary);
 
         // Admin-only `{id,name}` list for membership pickers (base user editor).
-        $app->get('/admin/customers', function (Request $req, Response $res) use ($c): Response {
+        $adminList = function (Request $req, Response $res) use ($c): Response {
             if (($deny = self::requireAdmin($c->get(UserContext::class), $res)) !== null) {
                 return $deny;
             }
-            return self::json($res, ['customers' => $c->get(CustomerRepository::class)->adminList()]);
-        });
+            $rows = $c->get(CustomerRepository::class)->adminList();
+            return self::json($res, ['companies' => $rows, 'customers' => $rows]);
+        };
+        $app->get('/admin/companies', $adminList);
+        $app->get('/admin/customers', $adminList);
 
         // The caller's OWN companies, for the shell's profile menu.
         //
@@ -110,15 +137,18 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
         });
 
         // Directory CRUD.
-        $app->get('/customers', function (Request $req, Response $res) use ($c): Response {
-            if (($deny = self::require($c->get(UserContext::class), 'customers:read', $res)) !== null) {
+        $list = function (Request $req, Response $res) use ($c): Response {
+            if (($deny = self::require($c->get(UserContext::class), 'companies:read', $res)) !== null) {
                 return $deny;
             }
-            return self::json($res, ['customers' => $c->get(CustomerRepository::class)->all()]);
-        });
+            $rows = $c->get(CustomerRepository::class)->all();
+            return self::json($res, ['companies' => $rows, 'customers' => $rows]);
+        };
+        $app->get('/companies', $list);
+        $app->get('/customers', $list);
 
-        $app->post('/customers', function (Request $req, Response $res) use ($c): Response {
-            if (($deny = self::require($c->get(UserContext::class), 'customers:write', $res)) !== null) {
+        $create = function (Request $req, Response $res) use ($c): Response {
+            if (($deny = self::require($c->get(UserContext::class), 'companies:write', $res)) !== null) {
                 return $deny;
             }
             $data = self::payload((array) $req->getParsedBody());
@@ -130,20 +160,24 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
                 return self::json($res, ['error' => 'E-Mail bereits vergeben'], 409);
             }
             return self::json($res, ['id' => $repo->create($data)], 201);
-        });
+        };
+        $app->post('/companies', $create);
+        $app->post('/customers', $create);
 
-        $app->get('/customers/{id:[0-9]+}', function (Request $req, Response $res, array $args) use ($c): Response {
-            if (($deny = self::require($c->get(UserContext::class), 'customers:read', $res)) !== null) {
+        $show = function (Request $req, Response $res, array $args) use ($c): Response {
+            if (($deny = self::require($c->get(UserContext::class), 'companies:read', $res)) !== null) {
                 return $deny;
             }
-            $customer = $c->get(CustomerRepository::class)->find((int) $args['id']);
-            return $customer === null
+            $company = $c->get(CustomerRepository::class)->find((int) $args['id']);
+            return $company === null
                 ? self::json($res, ['error' => 'Not found'], 404)
-                : self::json($res, $customer);
-        });
+                : self::json($res, $company);
+        };
+        $app->get('/companies/{id:[0-9]+}', $show);
+        $app->get('/customers/{id:[0-9]+}', $show);
 
-        $app->patch('/customers/{id:[0-9]+}', function (Request $req, Response $res, array $args) use ($c): Response {
-            if (($deny = self::require($c->get(UserContext::class), 'customers:write', $res)) !== null) {
+        $update = function (Request $req, Response $res, array $args) use ($c): Response {
+            if (($deny = self::require($c->get(UserContext::class), 'companies:write', $res)) !== null) {
                 return $deny;
             }
             $repo = $c->get(CustomerRepository::class);
@@ -160,15 +194,19 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
             }
             $repo->update($id, $data);
             return self::json($res, ['ok' => true]);
-        });
+        };
+        $app->patch('/companies/{id:[0-9]+}', $update);
+        $app->patch('/customers/{id:[0-9]+}', $update);
 
-        $app->delete('/customers/{id:[0-9]+}', function (Request $req, Response $res, array $args) use ($c): Response {
-            if (($deny = self::require($c->get(UserContext::class), 'customers:write', $res)) !== null) {
+        $delete = function (Request $req, Response $res, array $args) use ($c): Response {
+            if (($deny = self::require($c->get(UserContext::class), 'companies:write', $res)) !== null) {
                 return $deny;
             }
             $c->get(CustomerRepository::class)->delete((int) $args['id']);
             return self::json($res, ['ok' => true]);
-        });
+        };
+        $app->delete('/companies/{id:[0-9]+}', $delete);
+        $app->delete('/customers/{id:[0-9]+}', $delete);
     }
 
     // --- helpers ---------------------------------------------------------------
@@ -201,14 +239,36 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
         return $v === '' ? null : mb_substr($v, 0, $limit);
     }
 
+    /**
+     * Legacy → current permission id, for the transition window.
+     *
+     * @var array<string,string>
+     */
+    private const PERMISSION_ALIASES = [
+        'companies:read' => 'customers:read',
+        'companies:write' => 'customers:write',
+    ];
+
+    /**
+     * Gate on a permission, accepting the PRE-RENAME spelling too.
+     *
+     * A token issued before tds-auth-api 0.6.0 carries `customers:read` and
+     * stays valid for up to an hour. Checking only the new id would 403 every
+     * one of those users — right after a deploy, for a right they demonstrably
+     * hold. Drop the alias lookup together with the rest of the aliases in the
+     * follow-up release.
+     */
     private static function require(UserContext $user, string $permission, Response $res): ?Response
     {
         if (!$user->isAuthenticated()) {
             return self::json($res, ['error' => 'Unauthorized'], 401);
         }
-        if (!$user->has($permission)) {
+
+        $legacy = self::PERMISSION_ALIASES[$permission] ?? null;
+        if (!$user->has($permission) && ($legacy === null || !$user->has($legacy))) {
             return self::json($res, ['error' => 'Forbidden'], 403);
         }
+
         return null;
     }
 

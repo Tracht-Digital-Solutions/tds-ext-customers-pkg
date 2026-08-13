@@ -63,7 +63,7 @@ beforeEach(() => {
   window.addEventListener(TOAST_EVENT, collectToast);
   calls = [];
   handlers = [() => ({ status: 200, body: {} })];
-  respond(/^\/customers$/, { customers: [] });
+  respond(/^\/companies$/, { customers: [] });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
@@ -84,7 +84,7 @@ const user = () => userEvent.setup({ delay: null });
 const sent = (method: string, match: RegExp) => calls.filter((c) => c.method === method && match.test(pathOf(c.url)));
 
 async function open(customers: unknown[] = []) {
-  respond(/^\/customers$/, { customers }, 200, "GET");
+  respond(/^\/companies$/, { customers }, 200, "GET");
   render(<CustomersList />);
   const u = user();
   await waitFor(() => expect(calls.length).toBeGreaterThan(0));
@@ -102,7 +102,7 @@ describe("loading", () => {
   it("reads the directory with credentials", async () => {
     await open();
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
-    expect(pathOf(fetchMock.mock.calls[0]![0] as string)).toBe("/customers");
+    expect(pathOf(fetchMock.mock.calls[0]![0] as string)).toBe("/companies");
     // Absolute, on the API host. Every other assertion here matches the PATH,
     // which a relative fetch satisfies too — so this is the one that fails if
     // the call ever goes back to the product's own origin (whose SPA fallback
@@ -118,7 +118,7 @@ describe("loading", () => {
 
   it("says so when the directory is empty", async () => {
     await open();
-    expect(screen.getByText("Noch keine Kunden.")).toBeTruthy();
+    expect(screen.getByText("Noch keine Firmen.")).toBeTruthy();
   });
 
   it("lists each customer with contact details IN THEIR OWN COLUMNS", async () => {
@@ -137,42 +137,42 @@ describe("loading", () => {
   });
 
   it("names the reason when the user lacks permission", async () => {
-    respond(/^\/customers$/, {}, 403, "GET");
+    respond(/^\/companies$/, {}, 403, "GET");
     render(<CustomersList />);
     expect(await screen.findByText("Keine Berechtigung.")).toBeTruthy();
   });
 
   it("treats an expired session the same way", async () => {
-    respond(/^\/customers$/, {}, 401, "GET");
+    respond(/^\/companies$/, {}, 401, "GET");
     render(<CustomersList />);
     expect(await screen.findByText("Keine Berechtigung.")).toBeTruthy();
   });
 
   it("reports any other failure with its status", async () => {
-    respond(/^\/customers$/, {}, 500, "GET");
+    respond(/^\/companies$/, {}, 500, "GET");
     render(<CustomersList />);
     expect(await screen.findByText("Fehler (HTTP 500).")).toBeTruthy();
   });
 
   it("does NOT list customers carried by a non-OK response", async () => {
     // A denied response must not put the customer directory on screen.
-    respond(/^\/customers$/, { customers: [ACME] }, 403, "GET");
+    respond(/^\/companies$/, { customers: [ACME] }, 403, "GET");
     render(<CustomersList />);
     await screen.findByText("Keine Berechtigung.");
     expect(screen.queryByText("Acme GmbH")).toBeNull();
   });
 
   it("leaves the loading state even when the request fails", async () => {
-    respond(/^\/customers$/, {}, 500, "GET");
+    respond(/^\/companies$/, {}, 500, "GET");
     render(<CustomersList />);
     await screen.findByText("Fehler (HTTP 500).");
     expect(screen.queryByLabelText("Wird geladen")).toBeNull();
   });
 
   it("tolerates a response with no customers field", async () => {
-    respond(/^\/customers$/, {}, 200, "GET");
+    respond(/^\/companies$/, {}, 200, "GET");
     render(<CustomersList />);
-    expect(await screen.findByText("Noch keine Kunden.")).toBeTruthy();
+    expect(await screen.findByText("Noch keine Firmen.")).toBeTruthy();
   });
 });
 
@@ -180,19 +180,19 @@ describe("creating a customer", () => {
   it("hides the form until it is asked for", async () => {
     await open();
     expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull();
-    expect(screen.getByRole("button", { name: "Neuer Kunde" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Neue Firma" })).toBeTruthy();
   });
 
   it("opens a blank form", async () => {
     const u = await open([ACME]);
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
-    expect(screen.getByRole("heading", { name: "Neuer Kunde" })).toBeTruthy();
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    expect(screen.getByRole("heading", { name: "Neue Firma" })).toBeTruthy();
     expect(nameBox().value).toBe("");
   });
 
   it("refuses to create a nameless customer", async () => {
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(emailBox(), "neu@example.de");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText("Name ist erforderlich.")).toBeTruthy();
@@ -201,7 +201,7 @@ describe("creating a customer", () => {
 
   it("treats a whitespace-only name as empty", async () => {
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "   ");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText("Name ist erforderlich.")).toBeTruthy();
@@ -210,14 +210,14 @@ describe("creating a customer", () => {
 
   it("POSTs a new customer to the collection", async () => {
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.type(emailBox(), "neu@example.de");
     await u.type(phoneBox(), "040 999");
     await u.type(noteBox(), "Über Empfehlung");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
-    await waitFor(() => expect(sent("POST", /^\/customers$/)).toHaveLength(1));
-    expect(sent("POST", /^\/customers$/)[0]!.body).toEqual({
+    await waitFor(() => expect(sent("POST", /^\/companies$/)).toHaveLength(1));
+    expect(sent("POST", /^\/companies$/)[0]!.body).toEqual({
       name: "Neu GmbH",
       email: "neu@example.de",
       phone: "040 999",
@@ -230,19 +230,19 @@ describe("creating a customer", () => {
 
   it("closes the form and reloads on success", async () => {
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     // Create and edit say different things now ("angelegt" vs "gespeichert"),
     // which is the point — the confirmation names what actually happened.
     await waitFor(() => expect(toasts.some((t) => t.variant === "success" && t.message.includes("angelegt"))).toBe(true));
     expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull();
-    await waitFor(() => expect(sent("GET", /^\/customers$/)).toHaveLength(2));
+    await waitFor(() => expect(sent("GET", /^\/companies$/)).toHaveLength(2));
   });
 
   it("abandons the form without sending anything", async () => {
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Abbrechen" }));
     expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull();
@@ -254,7 +254,7 @@ describe("editing a customer", () => {
   it("loads the row into the form", async () => {
     const u = await open([ACME]);
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Bearbeiten" }));
-    expect(screen.getByRole("heading", { name: "Kunde bearbeiten" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Firma bearbeiten" })).toBeTruthy();
     expect(nameBox().value).toBe("Acme GmbH");
     expect(emailBox().value).toBe("info@acme.de");
     expect(phoneBox().value).toBe("040 123");
@@ -271,8 +271,8 @@ describe("editing a customer", () => {
     expect(phoneBox().value).toBe("");
     expect(noteBox().value).toBe("");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
-    await waitFor(() => expect(sent("PATCH", /^\/customers\/6$/)).toHaveLength(1));
-    expect(sent("PATCH", /^\/customers\/6$/)[0]!.body).toEqual({
+    await waitFor(() => expect(sent("PATCH", /^\/companies\/6$/)).toHaveLength(1));
+    expect(sent("PATCH", /^\/companies\/6$/)[0]!.body).toEqual({
       name: "Beta AG",
       email: "",
       phone: "",
@@ -288,17 +288,17 @@ describe("editing a customer", () => {
     await u.clear(nameBox());
     await u.type(nameBox(), "Acme SE");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
-    await waitFor(() => expect(sent("PATCH", /^\/customers\/5$/)).toHaveLength(1));
+    await waitFor(() => expect(sent("PATCH", /^\/companies\/5$/)).toHaveLength(1));
     expect(sent("POST", /customers/)).toHaveLength(0);
-    expect(sent("PATCH", /^\/customers\/5$/)[0]!.body).toMatchObject({ name: "Acme SE" });
+    expect(sent("PATCH", /^\/companies\/5$/)[0]!.body).toMatchObject({ name: "Acme SE" });
   });
 
   it("edits the row whose button was pressed", async () => {
     const u = await open([ACME, BETA]);
     await u.click(within(row("Beta AG")).getByRole("button", { name: "Bearbeiten" }));
     await u.click(screen.getByRole("button", { name: "Speichern" }));
-    await waitFor(() => expect(sent("PATCH", /^\/customers\/6$/)).toHaveLength(1));
-    expect(sent("PATCH", /^\/customers\/5$/)).toHaveLength(0);
+    await waitFor(() => expect(sent("PATCH", /^\/companies\/6$/)).toHaveLength(1));
+    expect(sent("PATCH", /^\/companies\/5$/)).toHaveLength(0);
   });
 
   it("refuses to blank out the name of an existing customer", async () => {
@@ -316,8 +316,8 @@ describe("editing a customer", () => {
     await u.clear(phoneBox());
     await u.type(phoneBox(), "040 555");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
-    await waitFor(() => expect(sent("PATCH", /^\/customers\/5$/)).toHaveLength(1));
-    expect(sent("PATCH", /^\/customers\/5$/)[0]!.body).toEqual({
+    await waitFor(() => expect(sent("PATCH", /^\/companies\/5$/)).toHaveLength(1));
+    expect(sent("PATCH", /^\/companies\/5$/)[0]!.body).toEqual({
       name: "Acme GmbH",
       email: "info@acme.de",
       phone: "040 555",
@@ -329,7 +329,7 @@ describe("editing a customer", () => {
     const u = await open([ACME]);
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Bearbeiten" }));
     await u.click(screen.getByRole("button", { name: "Abbrechen" }));
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     expect(nameBox().value).toBe("");
   });
 });
@@ -338,36 +338,36 @@ describe("save failures", () => {
   it("NAMES a duplicate email instead of a generic error", async () => {
     // This is the one failure an admin can act on: the customer already
     // exists under another row.
-    respond(/^\/customers$/, { error: "duplicate" }, 409, "POST");
+    respond(/^\/companies$/, { error: "duplicate" }, 409, "POST");
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Acme GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText("E-Mail bereits vergeben.")).toBeTruthy();
   });
 
   it("surfaces the API's error message otherwise", async () => {
-    respond(/^\/customers$/, { error: "Name zu lang" }, 422, "POST");
+    respond(/^\/companies$/, { error: "Name zu lang" }, 422, "POST");
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("Name zu lang"))).toBe(true));
   });
 
   it("falls back to the status code when there is no message", async () => {
-    respond(/^\/customers$/, {}, 500, "POST");
+    respond(/^\/companies$/, {}, 500, "POST");
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("500"))).toBe(true));
   });
 
   it("KEEPS the form and its content when the save fails", async () => {
-    respond(/^\/customers$/, { error: "nope" }, 500, "POST");
+    respond(/^\/companies$/, { error: "nope" }, 500, "POST");
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes(""))).toBe(true));
@@ -375,19 +375,19 @@ await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.messag
   });
 
   it("does not reload after a failed save", async () => {
-    respond(/^\/customers$/, { error: "nope" }, 500, "POST");
+    respond(/^\/companies$/, { error: "nope" }, 500, "POST");
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes(""))).toBe(true));
-    expect(sent("GET", /^\/customers$/)).toHaveLength(1);
+    expect(sent("GET", /^\/companies$/)).toHaveLength(1);
   });
 
   it("does not claim a failed save succeeded", async () => {
-    respond(/^\/customers$/, { error: "nope" }, 500, "POST");
+    respond(/^\/companies$/, { error: "nope" }, 500, "POST");
     const u = await open();
-    await u.click(screen.getByRole("button", { name: "Neuer Kunde" }));
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes(""))).toBe(true));
@@ -400,21 +400,21 @@ describe("deleting a customer", () => {
     const u = await open([ACME, BETA]);
     await u.click(within(row("Beta AG")).getByRole("button", { name: "Löschen" }));
     await u.click(screen.getAllByRole("button", { name: /Löschen/ }).at(-1)!);
-    await waitFor(() => expect(sent("DELETE", /^\/customers\/6$/)).toHaveLength(1));
-    expect(sent("DELETE", /^\/customers\/5$/)).toHaveLength(0);
+    await waitFor(() => expect(sent("DELETE", /^\/companies\/6$/)).toHaveLength(1));
+    expect(sent("DELETE", /^\/companies\/5$/)).toHaveLength(0);
   });
 
   it("reloads the directory afterwards", async () => {
     const u = await open([ACME]);
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Löschen" }));
     await u.click(screen.getAllByRole("button", { name: /Löschen/ }).at(-1)!);
-    await waitFor(() => expect(sent("GET", /^\/customers$/)).toHaveLength(2));
+    await waitFor(() => expect(sent("GET", /^\/companies$/)).toHaveLength(2));
   });
 
   it("reports a refused delete instead of silently doing nothing", async () => {
     // The backend refuses to delete a customer that still has memberships or
     // invoices; the admin needs to see that, not a no-op button.
-    respond(/^\/customers\/5$/, { error: "in use" }, 409, "DELETE");
+    respond(/^\/companies\/5$/, { error: "in use" }, 409, "DELETE");
     const u = await open([ACME]);
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Löschen" }));
     await u.click(screen.getAllByRole("button", { name: /Löschen/ }).at(-1)!);
@@ -423,11 +423,11 @@ describe("deleting a customer", () => {
 
   it("does NOT reload after a refused delete", async () => {
     // A reload would make it look as though the row had simply vanished.
-    respond(/^\/customers\/5$/, { error: "in use" }, 409, "DELETE");
+    respond(/^\/companies\/5$/, { error: "in use" }, 409, "DELETE");
     const u = await open([ACME]);
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Löschen" }));
     await u.click(screen.getAllByRole("button", { name: /Löschen/ }).at(-1)!);
     await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("409"))).toBe(true));
-    expect(sent("GET", /^\/customers$/)).toHaveLength(1);
+    expect(sent("GET", /^\/companies$/)).toHaveLength(1);
   });
 });

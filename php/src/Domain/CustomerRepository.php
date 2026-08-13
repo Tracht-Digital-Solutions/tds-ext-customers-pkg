@@ -6,7 +6,8 @@ namespace Tds\Ext\Customers\Domain;
 use PDO;
 
 /**
- * The panel's canonical customer/company directory (`customer`). All access via
+ * The panel's canonical company directory (`company`, renamed from `customer`).
+ * All access via
  * the core shared PDO. `adminList()` is the lightweight `{id,name}` list the
  * base user-management consumes for company-membership editing (replacing the
  * legacy `tds-customer-api` `GET /admin/customers`).
@@ -21,7 +22,7 @@ final class CustomerRepository
     public function all(): array
     {
         $rows = $this->pdo->query(
-            'SELECT id, name, email, phone, note, created_at FROM customer ORDER BY name ASC'
+            'SELECT id, name, email, phone, note, created_at FROM company ORDER BY name ASC'
         )->fetchAll();
         return array_map([self::class, 'map'], $rows);
     }
@@ -29,7 +30,7 @@ final class CustomerRepository
     /** Lightweight `{id,name}` list for membership pickers. @return list<array{id:int,name:string}> */
     public function adminList(): array
     {
-        $rows = $this->pdo->query('SELECT id, name FROM customer ORDER BY name ASC')->fetchAll();
+        $rows = $this->pdo->query('SELECT id, name FROM company ORDER BY name ASC')->fetchAll();
         return array_map(static fn (array $r): array => [
             'id' => (int) $r['id'],
             'name' => (string) $r['name'],
@@ -55,7 +56,7 @@ final class CustomerRepository
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $stmt = $this->pdo->prepare(
-            "SELECT id, name FROM customer WHERE id IN ({$placeholders}) ORDER BY name ASC"
+            "SELECT id, name FROM company WHERE id IN ({$placeholders}) ORDER BY name ASC"
         );
         $stmt->execute($ids);
 
@@ -68,7 +69,7 @@ final class CustomerRepository
     /** @return array<string,mixed>|null */
     public function find(int $id): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT id, name, email, phone, note, created_at FROM customer WHERE id = :id');
+        $stmt = $this->pdo->prepare('SELECT id, name, email, phone, note, created_at FROM company WHERE id = :id');
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch();
         return $row === false ? null : self::map($row);
@@ -78,7 +79,7 @@ final class CustomerRepository
     public function create(array $d): int
     {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO customer (name, email, phone, note) VALUES (:name, :email, :phone, :note)'
+            'INSERT INTO company (name, email, phone, note) VALUES (:name, :email, :phone, :note)'
         );
         $stmt->execute([':name' => $d['name'], ':email' => $d['email'], ':phone' => $d['phone'], ':note' => $d['note']]);
         return (int) $this->pdo->lastInsertId();
@@ -88,26 +89,26 @@ final class CustomerRepository
     public function update(int $id, array $d): void
     {
         $stmt = $this->pdo->prepare(
-            'UPDATE customer SET name = :name, email = :email, phone = :phone, note = :note WHERE id = :id'
+            'UPDATE company SET name = :name, email = :email, phone = :phone, note = :note WHERE id = :id'
         );
         $stmt->execute([':id' => $id, ':name' => $d['name'], ':email' => $d['email'], ':phone' => $d['phone'], ':note' => $d['note']]);
     }
 
     public function delete(int $id): void
     {
-        $stmt = $this->pdo->prepare('DELETE FROM customer WHERE id = :id');
+        $stmt = $this->pdo->prepare('DELETE FROM company WHERE id = :id');
         $stmt->execute([':id' => $id]);
     }
 
     public function count(): int
     {
-        return (int) $this->pdo->query('SELECT COUNT(*) FROM customer')->fetchColumn();
+        return (int) $this->pdo->query('SELECT COUNT(*) FROM company')->fetchColumn();
     }
 
-    /** Whether an email is already taken by a different customer (unique-guard). */
+    /** Whether an email is already taken by a different company (unique-guard). */
     public function emailTakenBy(string $email, ?int $exceptId = null): bool
     {
-        $sql = 'SELECT id FROM customer WHERE email = :email';
+        $sql = 'SELECT id FROM company WHERE email = :email';
         $params = [':email' => $email];
         if ($exceptId !== null) {
             $sql .= ' AND id <> :id';

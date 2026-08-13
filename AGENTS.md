@@ -1,39 +1,43 @@
 # AGENTS.md — tds-ext-customers-pkg
 
-The **customer/company directory** frontend extension: the frontend's canonical
-`customer` list. Read `tds-frontend-contract-pkg`'s AGENTS.md first (extensions
+The **company directory** (Firmen) frontend extension: the frontend's canonical
+`company` list. Read `tds-frontend-contract-pkg`'s AGENTS.md first (extensions
 implement that contract); `tds-ext-lexware-pkg` / `tds-ext-support-tickets-pkg` are the
 worked references for the container-first Module + RBAC pattern.
 
 > Status (2026-07-20): **published @0.1.1** (GitHub Packages `@latest`, tag `v0.1.1`).
 > Remaining go-live: wire into the admin product's `astro.config` (dep `^0.1.1` + the
-> extensions array) — this ext's `/admin/customers` then replaces the legacy
+> extensions array) — this ext's `/admin/companies` then replaces the legacy
 > `tds-customer-api` company-list call the frontend user-management uses. See the root
 > `MIGRATION-STATUS.md` (issue #3).
 
 ## What it does
 
-Admin-facing directory (`customers:read` / `customers:write`) with one page + a
-count widget. It owns the canonical **`customer`** table (id/name/email/phone/note)
-and exposes:
+Admin-facing directory (`companies:read` / `companies:write`) with one page
+(`/firmen`) + a count widget. It owns the canonical **`company`** table
+(id/name/email/phone/note) and exposes:
 
-- CRUD: `GET/POST /customers`, `GET/PATCH/DELETE /customers/{id}` (email uniqueness
-  → 409).
-- `GET /customers/summary` — widget count.
-- **`GET /admin/customers`** — the admin-only `{customers:[{id,name}]}` list the
+- CRUD: `GET/POST /companies`, `GET/PATCH/DELETE /companies/{id}` (email
+  uniqueness → 409).
+- `GET /companies/summary` — widget count.
+- **`GET /admin/companies`** — the admin-only `{companies:[{id,name}]}` list the
   **base user-management** consumes for company-membership editing (replacing the
   legacy `tds-customer-api` endpoint the new frontend still calls today).
+
 - **`GET /me/companies`** — `{companies:[{id,name,active}]}` for the caller's OWN
   memberships, which is what puts a company NAME in the shell's profile menu.
 
-### Why `/me/companies` exists next to `/admin/customers`
+Every one of those also answers at its old `/customers…` path for one release —
+see the rename section at the bottom.
 
-`/admin/customers` is admin-only **by design** ("wer Mitgliedschaften vergibt, ist
+### Why `/me/companies` exists next to `/admin/companies`
+
+`/admin/companies` is admin-only **by design** ("wer Mitgliedschaften vergibt, ist
 ohnehin Admin"), so a portal user cannot resolve even their own company's name and
 the menu would have to print `Firma #7`. Four things about it are deliberate:
 
 - **No permission gate beyond being signed in.** Your own company's name is not
-  `customers:read` material; requiring it would mean every portal user needs the
+  `companies:read` material; requiring it would mean every portal user needs the
   directory read right just to render a header.
 - **Scoped to the ids in the verified token**, via the contract's optional
   `MultiCompanyContext` (1.8.0) — `instanceof`, never assumed. A principal whose
@@ -63,10 +67,10 @@ billing / projects / documents / messages extensions build on. See the org's
 migration epic.
 
 **Cutover notes:**
-- `tds-auth-api` `app_user_customer.customer_id` references these ids — when
-  migrating, preserve existing customer ids (data migration), and repoint the
-  frontend's `CUSTOMER_API_URL` to this extension's `GET /admin/customers`.
-- The table is deliberately named `customer` (canonical), distinct from
+- `tds-auth-api` `app_user_company.company_id` references these ids — when
+  migrating, preserve existing company ids (data migration), and repoint the
+  frontend's `CUSTOMER_API_URL` to this extension's `GET /admin/companies`.
+- The table is named `company` (canonical), distinct from
   `tds-ext-lexware-pkg`'s own `lx_customer` billing directory — no collision.
 
 ## Conventions (from the template — don't regress)
@@ -183,3 +187,43 @@ by `"<METHOD> <pattern>"`. Two things to know before editing a route:
   renaming a route without touching `docs/api.php` fails there. That is the
   point: prose next to code rots, and a reference full of confident, wrong
   detail is worse than the bare route list it replaced.
+
+## `customer` → `company` (the rename, and what stayed)
+
+The table always held a **Firma**; the people are `app_user` rows in
+tds-auth-api and always were. As of this change the schema says so:
+`customer` → **`company`**, the permission ids `customers:*` →
+**`companies:*`**, the panel route `/customers` → **`/firmen`**, and every label
+reads "Firmen".
+
+**What is dual-accepted for exactly one release:**
+
+| Surface | Current | Also accepted |
+|---|---|---|
+| API paths | `/companies…`, `/admin/companies` | `/customers…`, `/admin/customers` |
+| Response key | `companies` | `customers` (both emitted) |
+| Permission ids | `companies:read/write` | `customers:read/write` |
+
+None of that is politeness. The panel, the thirteen extensions and the composed
+backend ship independently, so a build calling the old path has to keep working
+— and a missing ROUTE is a 404 the caller cannot recover from, unlike a missing
+permission. A token minted before tds-auth-api 0.6.0 carries `customers:*` for
+up to an hour, which is what the alias lookup in `require()` covers.
+
+**The route handlers are defined once and mapped twice.** Two copies of a
+permission check is how one of them ends up wrong. The `/customers…` doc entries
+are likewise *generated* from the canonical list in `php/docs/api.php` — hand
+-writing fourteen entries where seven differ by a path segment guarantees the
+pair nobody re-reads is the one that disagrees.
+
+**Delete all of it in the follow-up release:** the alias route mappings, the
+`PERMISSION_ALIASES` map, the second response key, and the `$aliases` derivation
+in the docs. Leaving them means the old names work forever and the rename bought
+nothing.
+
+**What deliberately did NOT change:** the module id (`customers`), the npm and
+Composer package names, and this repo's name. Those are publishing identity —
+pinned by both products and referenced in `Modules::enabled()` — and moving them
+is the separate, mechanical repo-rename step (the playbook already used twice in
+2026-07). Renaming them in the same change as a data migration would move the
+publishing identity and the schema at once.

@@ -8,7 +8,7 @@ export default function WidgetBody() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    apiFetch("/customers/summary")
+    apiFetch("/companies/summary")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: { count: number }) => setCount(d.count))
       .catch(() => setError(true));
@@ -20,7 +20,7 @@ export default function WidgetBody() {
   return (
     <div className="tds-stack">
       <p className="tds-widget__metric">{count}</p>
-      <p className="marginalia">Kunden im Verzeichnis</p>
+      <p className="marginalia">Firmen im Verzeichnis</p>
     </div>
   );
 }

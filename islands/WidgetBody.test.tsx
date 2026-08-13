@@ -40,7 +40,7 @@ describe("the widget", () => {
   it("fetches its summary endpoint with credentials", () => {
     render(<WidgetBody />);
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
-    expect(pathOf(fetchMock.mock.calls[0]![0] as string)).toBe("/customers/summary");
+    expect(pathOf(fetchMock.mock.calls[0]![0] as string)).toBe("/companies/summary");
     // Absolute, on the API host. Every other assertion here matches the PATH,
     // which a relative fetch satisfies too — so this is the one that fails if
     // the call ever goes back to the product's own origin (whose SPA fallback
@@ -58,7 +58,7 @@ describe("the widget", () => {
     reply = { status: 200, body: { count: 23 } };
     render(<WidgetBody />);
     expect(await screen.findByText("23")).toBeTruthy();
-    expect(screen.getByText("Kunden im Verzeichnis")).toBeTruthy();
+    expect(screen.getByText("Firmen im Verzeichnis")).toBeTruthy();
   });
 
   it("renders a real zero for an empty directory", async () => {

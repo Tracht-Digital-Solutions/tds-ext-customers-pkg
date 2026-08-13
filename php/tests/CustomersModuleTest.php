@@ -123,7 +123,7 @@ final class CustomersModuleTest extends TestCase
         $module = new CustomersModule();
         self::assertSame('customers', $module->id());
         $perms = array_map(static fn ($p): string => $p->id, $module->permissions());
-        self::assertSame(['customers:read', 'customers:write'], $perms);
+        self::assertSame(['companies:read', 'companies:write'], $perms);
         self::assertDirectoryExists($module->migrations()[0]);
     }
 
@@ -139,29 +139,65 @@ final class CustomersModuleTest extends TestCase
 
     public function testAdminListRequiresAdmin(): void
     {
-        $res = $this->get($this->appWith(new FakeUser(perms: ['customers:read'])), '/admin/customers');
+        $res = $this->get($this->appWith(new FakeUser(perms: ['companies:read'])), '/admin/customers');
         self::assertSame(403, $res->getStatusCode());
     }
 
     public function testCreateRequiresWrite(): void
     {
-        $res = $this->post($this->appWith(new FakeUser(perms: ['customers:read'])), '/customers', ['name' => 'ACME']);
+        $res = $this->post($this->appWith(new FakeUser(perms: ['companies:read'])), '/customers', ['name' => 'ACME']);
         self::assertSame(403, $res->getStatusCode());
     }
 
     public function testCreateValidatesName(): void
     {
-        $res = $this->post($this->appWith(new FakeUser(perms: ['customers:write'])), '/customers', ['name' => '']);
+        $res = $this->post($this->appWith(new FakeUser(perms: ['companies:write'])), '/customers', ['name' => '']);
         self::assertSame(422, $res->getStatusCode());
     }
 
     public function testCreateValidatesEmail(): void
     {
         $res = $this->post(
-            $this->appWith(new FakeUser(perms: ['customers:write'])),
+            $this->appWith(new FakeUser(perms: ['companies:write'])),
             '/customers',
             ['name' => 'ACME', 'email' => 'not-an-email'],
         );
+        self::assertSame(422, $res->getStatusCode());
+    }
+
+    // --- the customer → company rename ------------------------------------
+
+    public function testEveryDirectoryRouteAnswersOnBothPaths(): void
+    {
+        // The panel, the extensions and this backend ship independently, so a
+        // build still calling the old path has to keep working for one
+        // release — and unlike a missing permission, a missing ROUTE is a 404
+        // the caller cannot recover from.
+        foreach ([
+            ['GET', '/companies', '/customers'],
+            ['GET', '/companies/summary', '/customers/summary'],
+            ['GET', '/companies/7', '/customers/7'],
+        ] as [$method, $current, $legacy]) {
+            $app = $this->appWith(new FakeUser(perms: []));
+            // 403 (not 404) on both proves the route is MOUNTED — the gate is
+            // what refuses it, which is the same answer either way.
+            self::assertSame(403, $this->get($app, $current)->getStatusCode(), $current);
+            self::assertSame(403, $this->get($this->appWith(new FakeUser(perms: [])), $legacy)->getStatusCode(), $legacy);
+        }
+    }
+
+    public function testStillAcceptsTheOldPermissionSpelling(): void
+    {
+        // A token minted before tds-auth-api 0.6.0 carries `customers:write`
+        // and stays valid for up to an hour. Checking only the new id would
+        // 403 those users right after a deploy, for a right they hold.
+        $res = $this->post(
+            $this->appWith(new FakeUser(perms: ['customers:write'])),
+            '/companies',
+            ['name' => ''],
+        );
+
+        // 422 (validation) rather than 403 (gate) — the permission was accepted.
         self::assertSame(422, $res->getStatusCode());
     }
 
@@ -187,7 +223,7 @@ final class CustomersModuleTest extends TestCase
         // silently false, so this asserts the DEGRADED path is reached rather
         // than erroring — the failure mode it guards is a green suite that
         // proves nothing because the interface was never resolvable.
-        $res = $this->get($this->appWith(new FakeUser(perms: ['customers:read'])), '/me/companies');
+        $res = $this->get($this->appWith(new FakeUser(perms: ['companies:read'])), '/me/companies');
 
         self::assertSame(200, $res->getStatusCode());
         self::assertSame(['companies' => []], $this->body($res));

@@ -7,46 +7,46 @@ import { defineExtension } from "@tracht-digital-solutions/tds-frontend-contract
  */
 export default defineExtension({
   id: "customers",
-  name: "Kunden",
+  name: "Firmen",
   // Kept in step with package.json/composer.json by the release workflow —
   // don't hand-edit. (It had drifted to 0.1.0 while the package was at 0.1.11,
   // because only the bump step knows the new number.)
   version: "0.1.12",
   permissions: [
-    { id: "customers:read", label: "Kunden ansehen", group: "customers" },
-    { id: "customers:write", label: "Kunden verwalten", group: "customers" },
+    { id: "companies:read", label: "Firmen ansehen", group: "companies" },
+    { id: "companies:write", label: "Firmen verwalten", group: "companies" },
   ],
   nav: [
     {
       id: "customers",
-      label: "Kunden",
-      href: "/customers",
-      icon: "users",
+      label: "Firmen",
+      href: "/firmen",
+      icon: "building",
       group: "verwaltung",
       order: 15,
-      permission: "customers:read",
+      permission: "companies:read",
     },
   ],
   widgets: [
     {
       id: "customers-count",
-      title: "Kunden",
+      title: "Firmen",
       island: "@tracht-digital-solutions/tds-ext-customers/widgets/Widget.astro",
       size: "sm",
-      permission: "customers:read",
-      dataEndpoint: "/customers/summary",
+      permission: "companies:read",
+      dataEndpoint: "/companies/summary",
       order: 15,
     },
   ],
   routes: [
     {
-      pattern: "/customers",
+      pattern: "/firmen",
       entrypoint: "@tracht-digital-solutions/tds-ext-customers/pages/Index.astro",
-      permission: "customers:read",
+      permission: "companies:read",
     },
   ],
   i18n: {
-    de: { "customers.title": "Kunden" },
-    en: { "customers.title": "Customers" },
+    de: { "companies.title": "Firmen" },
+    en: { "companies.title": "Companies" },
   },
 });
