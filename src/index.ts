@@ -11,7 +11,7 @@ export default defineExtension({
   // Kept in step with package.json/composer.json by the release workflow —
   // don't hand-edit. (It had drifted to 0.1.0 while the package was at 0.1.11,
   // because only the bump step knows the new number.)
-  version: "0.1.11",
+  version: "0.1.12",
   permissions: [
     { id: "customers:read", label: "Kunden ansehen", group: "customers" },
     { id: "customers:write", label: "Kunden verwalten", group: "customers" },
