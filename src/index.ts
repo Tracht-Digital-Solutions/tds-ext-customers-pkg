@@ -11,7 +11,7 @@ export default defineExtension({
   // Kept in step with package.json/composer.json by the release workflow —
   // don't hand-edit. (It had drifted to 0.1.0 while the package was at 0.1.11,
   // because only the bump step knows the new number.)
-  version: "0.1.14",
+  version: "0.1.15",
   permissions: [
     { id: "companies:read", label: "Firmen ansehen", group: "companies" },
     { id: "companies:write", label: "Firmen verwalten", group: "companies" },
