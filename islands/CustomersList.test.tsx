@@ -439,3 +439,47 @@ describe("deleting a customer", () => {
     expect(sent("GET", /^\/companies$/)).toHaveLength(1);
   });
 });
+
+/**
+ * Make matching requests fail the way fetch does when the network is gone:
+ * `apiFetch` resolves every HTTP status, but a request that never reaches the
+ * API rejects with a TypeError. Everything else still gets the stub above.
+ */
+function unreachable(match: (path: string, method: string) => boolean = () => true) {
+  const answer = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (match(pathOf(url), init?.method ?? "GET")) throw new TypeError("Failed to fetch");
+      return answer(url, init);
+    }),
+  );
+}
+
+describe("when the API cannot be reached", () => {
+  it("says so instead of loading forever", async () => {
+    unreachable();
+    render(<CustomersList />);
+    expect(await screen.findByText("Firmen konnten nicht geladen werden — die API ist nicht erreichbar.")).toBeTruthy();
+    expect(screen.queryByLabelText("Wird geladen")).toBeNull();
+  });
+
+  it("keeps the form when a save never arrived", async () => {
+    const u = await open();
+    unreachable((_, method) => method === "POST");
+    await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    await u.type(nameBox(), "Neu GmbH");
+    await u.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("nicht erreichbar"))).toBe(true));
+    expect(nameBox().value).toBe("Neu GmbH");
+  });
+
+  it("says so when a delete never arrived, without reloading", async () => {
+    const u = await open([ACME]);
+    unreachable((_, method) => method === "DELETE");
+    await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Löschen" }));
+    await u.click(screen.getAllByRole("button", { name: /Löschen/ }).at(-1)!);
+    await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("nicht erreichbar"))).toBe(true));
+    expect(sent("GET", /^\/companies$/)).toHaveLength(1);
+  });
+});

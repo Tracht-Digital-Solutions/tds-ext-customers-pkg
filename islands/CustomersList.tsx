@@ -25,8 +25,12 @@ export default function CustomersList() {
   const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
-    const res = await api("/companies");
-    if (res.ok) {
+    // apiFetch hands back every HTTP status, but a request that never reaches
+    // the API rejects. Uncaught, the directory stayed on its spinner for good.
+    const res = await api("/companies").catch(() => null);
+    if (res === null) {
+      setStatus("Firmen konnten nicht geladen werden — die API ist nicht erreichbar.");
+    } else if (res.ok) {
       const body = await res.json();
       // Both keys during the rename window; the new one wins.
       setCustomers(body.companies ?? body.customers ?? []);
@@ -60,8 +64,11 @@ export default function CustomersList() {
       method: isNew ? "POST" : "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
-    });
-    if (res.ok) {
+    }).catch(() => null);
+    if (res === null) {
+      // The form stays open with everything typed into it.
+      toast.danger("Speichern fehlgeschlagen — die API ist nicht erreichbar.");
+    } else if (res.ok) {
       setEditing(null);
       toast.success(isNew ? "Firma angelegt." : "Firma gespeichert.");
       void load();
@@ -91,6 +98,10 @@ export default function CustomersList() {
       } else {
         toast.danger(`Löschen fehlgeschlagen (HTTP ${res.status}).`);
       }
+    } catch {
+      // The request never reached the API; nothing was deleted, so no reload.
+      setPendingDelete(null);
+      toast.danger("Löschen fehlgeschlagen — die API ist nicht erreichbar.");
     } finally {
       setDeleting(false);
     }
