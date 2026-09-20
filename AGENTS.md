@@ -73,6 +73,14 @@ migration epic.
 - The table is named `company` (canonical), distinct from
   `tds-ext-lexware-pkg`'s own `lx_customer` billing directory — no collision.
 
+## Motion (tds-shared >= 0.38.7)
+
+Das Firmen-Formular und der Validierungshinweis klappen per `Collapse` auf —
+bewusst kein `Presence`: ein Formular soll auf demselben Frame da sein, auf dem
+der Knopf gedrueckt wurde. Die Tabelle bleibt statisch (Transforms auf `<tr>`
+rendern unzuverlaessig). Beim Schliessen bleibt der Inhalt kurz im DOM
+(`aria-hidden` + `inert`) — Tests `waitFor`, nicht sofort pruefen.
+
 ## Conventions (from the template — don't regress)
 
 - **Call the API with `apiFetch` from `@tracht-digital-solutions/tds-shared/api`,
