@@ -187,13 +187,16 @@ describe("loading", () => {
 describe("creating a customer", () => {
   it("hides the form until it is asked for", async () => {
     await open();
-    expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull();
+    // The closing form stays in the DOM for its exit, aria-hidden and inert.
+    await waitFor(() => expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull());
     expect(screen.getByRole("button", { name: "Neue Firma" })).toBeTruthy();
   });
 
   it("opens a blank form", async () => {
     const u = await open([ACME]);
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     expect(screen.getByRole("heading", { name: "Neue Firma" })).toBeTruthy();
     expect(nameBox().value).toBe("");
   });
@@ -201,6 +204,8 @@ describe("creating a customer", () => {
   it("refuses to create a nameless customer", async () => {
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(emailBox(), "neu@example.de");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText("Name ist erforderlich.")).toBeTruthy();
@@ -210,6 +215,8 @@ describe("creating a customer", () => {
   it("treats a whitespace-only name as empty", async () => {
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "   ");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText("Name ist erforderlich.")).toBeTruthy();
@@ -219,6 +226,8 @@ describe("creating a customer", () => {
   it("POSTs a new customer to the collection", async () => {
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.type(emailBox(), "neu@example.de");
     await u.type(phoneBox(), "040 999");
@@ -239,21 +248,27 @@ describe("creating a customer", () => {
   it("closes the form and reloads on success", async () => {
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     // Create and edit say different things now ("angelegt" vs "gespeichert"),
     // which is the point — the confirmation names what actually happened.
     await waitFor(() => expect(toasts.some((t) => t.variant === "success" && t.message.includes("angelegt"))).toBe(true));
-    expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull();
+    // The closing form stays in the DOM for its exit, aria-hidden and inert.
+    await waitFor(() => expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull());
     await waitFor(() => expect(sent("GET", /^\/companies$/)).toHaveLength(2));
   });
 
   it("abandons the form without sending anything", async () => {
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Abbrechen" }));
-    expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull();
+    // The closing form stays in the DOM for its exit, aria-hidden and inert.
+    await waitFor(() => expect(screen.queryByPlaceholderText("Name / Firma")).toBeNull());
     expect(sent("POST", /customers/)).toHaveLength(0);
   });
 });
@@ -262,7 +277,8 @@ describe("editing a customer", () => {
   it("loads the row into the form", async () => {
     const u = await open([ACME]);
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Bearbeiten" }));
-    expect(screen.getByRole("heading", { name: "Firma bearbeiten" })).toBeTruthy();
+    // The form cross-fades in (tds-shared Presence).
+    expect(await screen.findByRole("heading", { name: "Firma bearbeiten" })).toBeTruthy();
     expect(nameBox().value).toBe("Acme GmbH");
     expect(emailBox().value).toBe("info@acme.de");
     expect(phoneBox().value).toBe("040 123");
@@ -338,6 +354,8 @@ describe("editing a customer", () => {
     await u.click(within(row("Acme GmbH")).getByRole("button", { name: "Bearbeiten" }));
     await u.click(screen.getByRole("button", { name: "Abbrechen" }));
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     expect(nameBox().value).toBe("");
   });
 });
@@ -349,6 +367,8 @@ describe("save failures", () => {
     respond(/^\/companies$/, { error: "duplicate" }, 409, "POST");
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Acme GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     expect(await screen.findByText("E-Mail bereits vergeben.")).toBeTruthy();
@@ -358,6 +378,8 @@ describe("save failures", () => {
     respond(/^\/companies$/, { error: "Name zu lang" }, 422, "POST");
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("Name zu lang"))).toBe(true));
@@ -367,6 +389,8 @@ await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.messag
     respond(/^\/companies$/, {}, 500, "POST");
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("500"))).toBe(true));
@@ -376,6 +400,8 @@ await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.messag
     respond(/^\/companies$/, { error: "nope" }, 500, "POST");
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes(""))).toBe(true));
@@ -386,6 +412,8 @@ await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.messag
     respond(/^\/companies$/, { error: "nope" }, 500, "POST");
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes(""))).toBe(true));
@@ -396,6 +424,8 @@ await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.messag
     respond(/^\/companies$/, { error: "nope" }, 500, "POST");
     const u = await open();
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
 await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes(""))).toBe(true));
@@ -468,6 +498,8 @@ describe("when the API cannot be reached", () => {
     const u = await open();
     unreachable((_, method) => method === "POST");
     await u.click(screen.getByRole("button", { name: "Neue Firma" }));
+    // The form cross-fades in (tds-shared Presence).
+    await screen.findByRole("heading", { name: "Neue Firma" });
     await u.type(nameBox(), "Neu GmbH");
     await u.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(toasts.some((t) => t.variant === "danger" && t.message.includes("nicht erreichbar"))).toBe(true));

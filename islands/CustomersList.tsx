@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ConfirmDialog, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
 import { apiFetch } from "@tracht-digital-solutions/tds-shared/api";
+import { Collapse } from "@tracht-digital-solutions/tds-shared/motion/react";
 
 const api = apiFetch;
 
@@ -112,23 +113,30 @@ export default function CustomersList() {
   return (
     <div className="tds-stack">
       {/* Validation + the load failure only — outcomes are toasts. */}
-      {status ? <p className="tds-alert tds-alert--danger" role="alert">{status}</p> : null}
+      <Collapse open={Boolean(status)}>
+        <p className="tds-alert tds-alert--danger" role="alert">{status}</p>
+      </Collapse>
 
-      {editing !== null ? (
-        <div className="tds-card tds-stack">
-          <h4>{editing === "new" ? "Neue Firma" : "Firma bearbeiten"}</h4>
-          <input className="field-boxed" type="text" placeholder="Name / Firma" aria-label="Name / Firma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="field-boxed" type="email" placeholder="E-Mail (optional)" aria-label="E-Mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className="field-boxed" type="text" placeholder="Telefon (optional)" aria-label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <textarea className="field-boxed" placeholder="Notiz (optional)" aria-label="Notiz" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-          <div className="tds-toolbar">
-            <button type="button" className="btn btn-primary" onClick={save}>Speichern</button>
-            <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>Abbrechen</button>
+      {/* Collapse, not a cross-fade: the form grows in place and is there on
+          the same frame the button is pressed. */}
+      <Collapse open={editing !== null}>
+        {editing !== null ? (
+          <div className="tds-card tds-stack">
+            <h4>{editing === "new" ? "Neue Firma" : "Firma bearbeiten"}</h4>
+            <input className="field-boxed" type="text" placeholder="Name / Firma" aria-label="Name / Firma" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input className="field-boxed" type="email" placeholder="E-Mail (optional)" aria-label="E-Mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <input className="field-boxed" type="text" placeholder="Telefon (optional)" aria-label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <textarea className="field-boxed" placeholder="Notiz (optional)" aria-label="Notiz" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+            <div className="tds-toolbar">
+              <button type="button" className="btn btn-primary" onClick={save}>Speichern</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>Abbrechen</button>
+            </div>
           </div>
-        </div>
-      ) : (
+        ) : null}
+      </Collapse>
+      {editing === null ? (
         <button type="button" className="btn btn-primary" onClick={startNew}>Neue Firma</button>
-      )}
+      ) : null}
 
       <table className="tds-table">
         <thead>
