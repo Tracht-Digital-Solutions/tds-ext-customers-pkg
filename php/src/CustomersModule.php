@@ -13,6 +13,7 @@ use Tds\Frontend\Contract\ApiDocSource;
 use Tds\Frontend\Contract\MultiCompanyContext;
 use Tds\Frontend\Contract\PermissionDef;
 use Tds\Frontend\Contract\UserContext;
+use Tds\Frontend\Contract\ModuleHttp;
 
 /**
  * Backend Module for the customer/company directory — the panel's canonical
@@ -26,6 +27,8 @@ use Tds\Frontend\Contract\UserContext;
  */
 final class CustomersModule extends AbstractModule implements ApiDocSource
 {
+    use ModuleHttp;
+
     public function id(): string
     {
         return 'customers';
@@ -270,23 +273,6 @@ final class CustomersModule extends AbstractModule implements ApiDocSource
         }
 
         return null;
-    }
-
-    private static function requireAdmin(UserContext $user, Response $res): ?Response
-    {
-        if (!$user->isAuthenticated()) {
-            return self::json($res, ['error' => 'Unauthorized'], 401);
-        }
-        if (!$user->isAdmin()) {
-            return self::json($res, ['error' => 'Forbidden'], 403);
-        }
-        return null;
-    }
-
-    private static function json(Response $res, mixed $data, int $status = 200): Response
-    {
-        $res->getBody()->write(json_encode($data, JSON_THROW_ON_ERROR));
-        return $res->withStatus($status)->withHeader('Content-Type', 'application/json');
     }
 
     /**
