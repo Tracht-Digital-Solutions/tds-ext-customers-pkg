@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { ConfirmDialog, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
-import { apiFetch } from "@tracht-digital-solutions/tds-shared/api";
+import { Alert, ConfirmDialog, Spinner, toast } from "@tracht-digital-solutions/tds-shared/components";
+import { apiFetch, sendJson } from "@tracht-digital-solutions/tds-shared/api";
 import { Collapse } from "@tracht-digital-solutions/tds-shared/motion/react";
-
-const api = apiFetch;
 
 interface Customer {
   id: number;
@@ -28,7 +26,7 @@ export default function CustomersList() {
   const load = async () => {
     // apiFetch hands back every HTTP status, but a request that never reaches
     // the API rejects. Uncaught, the directory stayed on its spinner for good.
-    const res = await api("/companies").catch(() => null);
+    const res = await apiFetch("/companies").catch(() => null);
     if (res === null) {
       setStatus("Firmen konnten nicht geladen werden — die API ist nicht erreichbar.");
     } else if (res.ok) {
@@ -61,11 +59,7 @@ export default function CustomersList() {
       return;
     }
     const isNew = editing === "new";
-    const res = await api(isNew ? "/companies" : `/companies/${editing}`, {
-      method: isNew ? "POST" : "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    }).catch(() => null);
+    const res = await sendJson(isNew ? "/companies" : `/companies/${editing}`, isNew ? "POST" : "PATCH", form).catch(() => null);
     if (res === null) {
       // The form stays open with everything typed into it.
       toast.danger("Speichern fehlgeschlagen — die API ist nicht erreichbar.");
@@ -91,7 +85,7 @@ export default function CustomersList() {
     if (!c) return;
     setDeleting(true);
     try {
-      const res = await api(`/companies/${c.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/companies/${c.id}`, { method: "DELETE" });
       setPendingDelete(null);
       if (res.ok) {
         toast.success(`„${c.name}" gelöscht.`);
@@ -114,7 +108,7 @@ export default function CustomersList() {
     <div className="tds-stack">
       {/* Validation + the load failure only — outcomes are toasts. */}
       <Collapse open={Boolean(status)}>
-        <p className="tds-alert tds-alert--danger" role="alert">{status}</p>
+        <Alert>{status}</Alert>
       </Collapse>
 
       {/* Collapse, not a cross-fade: the form grows in place and is there on
